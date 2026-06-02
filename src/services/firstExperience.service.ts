@@ -21,7 +21,7 @@ export const TRIAL_ACTIONS = [
   "video_dna_trial",
 ] as const;
 
-export type TrialAction = typeof TRIAL_ACTIONS[number];
+export type TrialAction = (typeof TRIAL_ACTIONS)[number];
 
 /**
  * Map trial action key → real credit_config action_key
@@ -148,6 +148,8 @@ export async function markTrialUsed(
   }
 }
 
+export { markTrialUsed as markTrialAsUsed };
+
 // ── Get Trial Status ─────────────────────────────────────────────────────────
 
 /**
@@ -239,7 +241,36 @@ export async function markTrialsConverted(userId: string): Promise<void> {
     logger.info({ userId }, "Trials marked as converted");
   } catch (err: any) {
     // Non-fatal
-    logger.warn({ err: err.message, userId }, "Failed to mark trials converted");
+    logger.warn(
+      { err: err.message, userId },
+      "Failed to mark trials converted",
+    );
+  }
+}
+
+/**
+ * Alias for markTrialsConverted - used by trials controller
+ */
+export async function convertTrial(
+  userId: string,
+): Promise<{ converted: number }> {
+  try {
+    const result = await prisma.first_experience_usage.updateMany({
+      where: { user_id: userId },
+      data: {
+        converted_to_pro: true,
+        converted_at: new Date(),
+      },
+    });
+
+    // Invalidate cache
+    await cache.del(`trial_status:${userId}`).catch(() => {});
+
+    logger.info({ userId, count: result.count }, "Trials converted");
+    return { converted: result.count };
+  } catch (err: any) {
+    logger.warn({ err: err.message, userId }, "Failed to convert trials");
+    return { converted: 0 };
   }
 }
 
@@ -281,7 +312,10 @@ export async function hasAvailableTrial(userId: string): Promise<boolean> {
     const status = await getTrialStatus(userId);
     return !status.allUsed;
   } catch (err: any) {
-    logger.warn({ err: err.message, userId }, "Failed to check available trial");
+    logger.warn(
+      { err: err.message, userId },
+      "Failed to check available trial",
+    );
     return false; // Assume no trial available
   }
 }
