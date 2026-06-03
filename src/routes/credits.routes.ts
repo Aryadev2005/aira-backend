@@ -94,7 +94,15 @@ export default async function creditRoutes(app: FastifyInstance) {
 
   // ── Admin routes ──────────────────────────────────────────────────────────
   const adminAuth = { preHandler: [requireAdminSecret] };
-  app.post("/admin/reset", adminAuth, ctrl.adminReset);
-  app.post("/admin/grant", adminAuth, ctrl.adminGrant);
+  app.post<{ Body: { userId: string; tier: string } }>(
+    "/admin/reset",
+    adminAuth,
+    ctrl.adminReset,
+  );
+  app.post<{ Body: { userId: string; amount: number; reason: string } }>(
+    "/admin/grant",
+    adminAuth,
+    ctrl.adminGrant,
+  );
   app.post("/admin/flush-cache", adminAuth, ctrl.adminFlushCache);
 }

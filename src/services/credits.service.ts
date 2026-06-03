@@ -466,9 +466,9 @@ export async function debitCredits(
         throw err;
       }
 
-      newBalance   = Number(rows[0].balance);
+      newBalance = Number(rows[0].balance);
       totalGranted = Number(rows[0].total_granted);
-      planLimit    =
+      planLimit =
         Number(rows[0].plan_credits) > 0
           ? Number(rows[0].plan_credits)
           : PLAN_CREDITS.free;
@@ -479,21 +479,21 @@ export async function debitCredits(
 
       const tx = await txn.credit_transactions.create({
         data: {
-          user_id:       userId,
-          type:          "debit",
-          amount:        -totalDebited,
+          user_id: userId,
+          type: "debit",
+          amount: -totalDebited,
           balance_after: newBalance,
-          action_key:    actionKey,
-          model_used:    modelUsed,
-          tokens_input:  inputTokens,
+          action_key: actionKey,
+          model_used: modelUsed,
+          tokens_input: inputTokens,
           tokens_output: outputTokens,
-          cost_usd:      aiCostUsd,
-          description:   `${config.displayName} — ${featureCharge.toFixed(1)} feature + ${aiCostCredits.toFixed(2)} AI`,
+          cost_usd: aiCostUsd,
+          description: `${config.displayName} — ${featureCharge.toFixed(1)} feature + ${aiCostCredits.toFixed(2)} AI`,
           metadata: {
             feature_charge: featureCharge,
-            ai_charge:      aiCostCredits,
-            total_debited:  totalDebited,
-            model:          modelUsed,
+            ai_charge: aiCostCredits,
+            total_debited: totalDebited,
+            model: modelUsed,
             ...metadata,
           },
         },
@@ -504,8 +504,8 @@ export async function debitCredits(
 
     await cache.del(`wallet:${userId}`);
 
-    const finalBalance = newBalance as number; // narrowed: guard above throws if null
-    const used    = Math.max(0, totalGranted - finalBalance);
+    const finalBalance = newBalance as unknown as number; // narrowed: guard above throws if null
+    const used = Math.max(0, totalGranted - finalBalance);
     const usedPct =
       planLimit > 0
         ? Math.min(100, Math.round((used / planLimit) * 1000) / 10)
@@ -520,13 +520,18 @@ export async function debitCredits(
         outputTokens,
         featureCharge,
         aiCostCredits: aiCostCredits.toFixed(3),
-        totalDebited:  totalDebited.toFixed(3),
-        aiCostUsd:     aiCostUsd.toFixed(6),
+        totalDebited: totalDebited.toFixed(3),
+        aiCostUsd: aiCostUsd.toFixed(6),
       },
       "Credits debited (feature + AI)",
     );
 
-    return { success: true, usedPct, totalDebited, transactionId: transactionId as string };
+    return {
+      success: true,
+      usedPct,
+      totalDebited,
+      transactionId: transactionId as unknown as string,
+    };
   } catch (err) {
     logger.error({ err, userId, actionKey }, "Credit debit failed");
     await alertDebitFailed(userId, actionKey, err).catch(() => {});

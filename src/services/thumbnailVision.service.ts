@@ -100,21 +100,18 @@ Analyze this thumbnail and return a JSON object matching this exact structure:
 }`;
 
     // Call GPT-4o vision with image URL
-    const response = await client.messages.create({
+    const response = await client.chat.completions.create({
       model: 'gpt-4o',
       max_tokens: 600,
       temperature: 0.1, // Near-deterministic for consistency
-      system: systemPrompt,
       messages: [
+        { role: 'system', content: systemPrompt },
         {
           role: 'user',
           content: [
             {
-              type: 'image',
-              source: {
-                type: 'url',
-                url: thumbnailUrl,
-              },
+              type: 'image_url',
+              image_url: { url: thumbnailUrl },
             },
             {
               type: 'text',
@@ -125,9 +122,8 @@ Analyze this thumbnail and return a JSON object matching this exact structure:
       ],
     });
 
-    // Extract text response
-    const textContent = response.content.find((block) => block.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
+    const textContent = response.choices[0]?.message?.content;
+    if (!textContent || typeof textContent !== 'string') {
       logger.warn('[ThumbnailVision] No text response from vision model');
       return null;
     }
@@ -135,7 +131,7 @@ Analyze this thumbnail and return a JSON object matching this exact structure:
     // Parse JSON response
     let analysis: ThumbnailVisionAnalysis;
     try {
-      analysis = JSON.parse(textContent.text);
+      analysis = JSON.parse(textContent);
     } catch (parseError) {
       logger.warn(
         `[ThumbnailVision] JSON parse error: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
@@ -249,7 +245,7 @@ Generate 3 COMPLETELY different approaches:
 
 Each must be visually distinct, culturally appropriate, and high-CTR potential.`;
 
-    const response = await client.messages.create({
+    const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       max_tokens: 1200,
       temperature: 0.7, // More creative for ideation
@@ -261,8 +257,8 @@ Each must be visually distinct, culturally appropriate, and high-CTR potential.`
       ],
     });
 
-    const textContent = response.content.find((block) => block.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
+    const textContent = response.choices[0]?.message?.content;
+    if (!textContent || typeof textContent !== 'string') {
       logger.warn('[ThumbnailVariants] No text response from generation model');
       return getFallbackVariants(params.hookLine);
     }
@@ -270,7 +266,7 @@ Each must be visually distinct, culturally appropriate, and high-CTR potential.`
     // Parse JSON response
     let parsedResponse: { variants: ThumbnailVariant[] };
     try {
-      parsedResponse = JSON.parse(textContent.text);
+      parsedResponse = JSON.parse(textContent);
     } catch (parseError) {
       logger.warn(
         `[ThumbnailVariants] Initial JSON parse failed: ${parseError instanceof Error ? parseError.message : String(parseError)}. Attempting cleanup.`,
@@ -278,7 +274,7 @@ Each must be visually distinct, culturally appropriate, and high-CTR potential.`
 
       // Retry once with cleanup attempt
       try {
-        const cleaned = textContent.text.replace(/```json\n?|\n?```/g, '').trim();
+        const cleaned = textContent.replace(/```json\n?|\n?```/g, '').trim();
         parsedResponse = JSON.parse(cleaned);
       } catch (cleanupError) {
         logger.warn('[ThumbnailVariants] Cleanup retry failed, using fallbacks');

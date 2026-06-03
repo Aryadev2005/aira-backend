@@ -10,9 +10,7 @@ import { logger } from "../utils/logger";
 import { debitCredits } from "../services/credits.service";
 import { alertDebitFailed } from "../utils/alerting";
 import { User } from "../types";
-import {
-  generateThumbnailVariants,
-} from "../services/thumbnailVision.service";
+import { generateThumbnailVariants } from "../services/thumbnailVision.service";
 import { getVoicePortrait } from "../services/voice.service";
 import type { ThumbnailVariant } from "../types/thumbnail.types";
 
@@ -56,7 +54,6 @@ export const generateVariants = async (
       select: {
         user_id: true,
         archetype: true,
-        tone_signature: true,
         niche: true,
         platform: true,
       },
@@ -94,7 +91,7 @@ export const generateVariants = async (
       niche: resolvedNiche,
       platform: resolvedPlatform,
       archetype: studioSession.archetype || "EDUCATOR",
-      toneSignature: voicePortrait?.toneSignature || studioSession.tone_signature,
+      toneSignature: voicePortrait?.toneSignature,
     });
 
     // Save to database
@@ -102,7 +99,9 @@ export const generateVariants = async (
       data: {
         user_id: user.id,
         studio_session_id: studioSessionId,
-        variants: variants as any,
+        variant_a: (variants[0] || {}) as any,
+        variant_b: (variants[1] || {}) as any,
+        variant_c: (variants[2] || {}) as any,
         status: "draft",
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       },
@@ -114,9 +113,13 @@ export const generateVariants = async (
     );
 
     // Debit credits (non-fatal)
-    await debitCredits(user.id, "thumbnail_variants", modelToUse, 800, 400).catch(
-      (err: any) => alertDebitFailed(user.id, "thumbnail_variants", err),
-    );
+    await debitCredits(
+      user.id,
+      "thumbnail_variants",
+      modelToUse,
+      800,
+      400,
+    ).catch((err: any) => alertDebitFailed(user.id, "thumbnail_variants", err));
 
     const responsePayload = {
       variantId: variantRecord.id,
@@ -150,7 +153,10 @@ export const getVariants = async (
   const user = req.user as User;
   const { studioSessionId } = req.params;
 
-  logger.info({ userId: user.id, studioSessionId }, "Fetching thumbnail variants");
+  logger.info(
+    { userId: user.id, studioSessionId },
+    "Fetching thumbnail variants",
+  );
 
   try {
     // Verify the session belongs to the user
@@ -184,7 +190,13 @@ export const getVariants = async (
 
     return success(reply, {
       variantId: variant.id,
-      variants: variant.variants as ThumbnailVariant[],
+      variants: [
+        variant.variant_a,
+        variant.variant_b,
+        variant.variant_c,
+      ].filter(
+        (v) => v != null && typeof v === "object" && Object.keys(v).length > 0,
+      ) as unknown as ThumbnailVariant[],
       status: variant.status,
       createdAt: variant.created_at,
       expiresAt: variant.expires_at,
@@ -225,7 +237,10 @@ export const updateVariantStatus = async (
   const { id } = req.params;
   const { status, winner, videoId } = req.body;
 
-  logger.info({ userId: user.id, variantId: id, status }, "Updating variant status");
+  logger.info(
+    { userId: user.id, variantId: id, status },
+    "Updating variant status",
+  );
 
   try {
     // Verify user owns the variant

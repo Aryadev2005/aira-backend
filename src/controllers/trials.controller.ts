@@ -12,7 +12,7 @@ import {
   TRIAL_ACTIONS,
   canUseTrial,
   TRIAL_TO_REAL,
-  markTrialUsed,
+  markTrialUsed as markTrialUsedService,
   markTrialsConverted,
 } from "../services/firstExperience.service";
 
@@ -83,12 +83,9 @@ export const markTrialUsed = async (
     }
 
     // Mark trial as used
-    await markTrialUsed(user.id, action as any, resultData);
+    await markTrialUsedService(user.id, action as any, resultData);
 
-    logger.info(
-      { userId: user.id, action },
-      "Trial marked as used",
-    );
+    logger.info({ userId: user.id, action }, "Trial marked as used");
 
     return success(reply, {
       action,

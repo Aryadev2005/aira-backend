@@ -423,6 +423,18 @@ export const DEFAULT_ACTION_CONFIGS: Record<ActionKey, ActionConfig> = {
     proTierAllowed: true,
     maxTierAllowed: true,
   },
+  rival_script: {
+    key: "rival_script",
+    displayName: "Rival Script",
+    featureCharge: 2,
+    modelMini: "gpt-4o-mini",
+    modelHeavy: "gpt-4o",
+    useHeavy: false,
+    freeTierAllowed: true,
+    starterTierAllowed: true,
+    proTierAllowed: true,
+    maxTierAllowed: true,
+  },
   shoot_plan: {
     key: "shoot_plan",
     displayName: "Director's Shoot Plan",

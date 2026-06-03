@@ -10,6 +10,7 @@
 // All cron jobs must catch errors — failures must NOT crash the server
 // ══════════════════════════════════════════════════════════════════════════════
 
+// @ts-ignore
 import cron from "node-cron";
 import { runWeeklyDigest } from "../services/digest.service";
 import { runRivalWatchCheck } from "../services/rivalWatch.service";
@@ -59,12 +60,11 @@ export function startScheduler(): void {
     try {
       const result = await Promise.race([
         runRivalWatchCheck(),
-        new Promise<{ notified: number; checked: number }>(
-          (_, reject) =>
-            setTimeout(
-              () => reject(new Error("Rival watch check timed out (30s)")),
-              30_000,
-            ),
+        new Promise<{ notified: number; checked: number }>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Rival watch check timed out (30s)")),
+            30_000,
+          ),
         ),
       ]);
 

@@ -180,7 +180,7 @@ export const authenticateFirebase = async (
       }
     }
 
-    req.user = user;
+    req.user = user!;
     // 60s TTL — short enough that profile analysis updates appear quickly,
     // long enough to avoid hammering the DB on every streaming token request.
     await cache.set(cacheKey, user, 60);

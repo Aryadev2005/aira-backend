@@ -13,7 +13,9 @@
     "allowJs": true,
     "resolveJsonModule": true,
     "typeRoots": ["./node_modules/@types", "./src/types"],
-    "ignoreDeprecations": "5.0"
+    "ignoreDeprecations": "5.0",
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["src/**/*"],
   "exclude": [

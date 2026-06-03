@@ -36,8 +36,13 @@ export const getNotes = async (req: FastifyRequest, reply: FastifyReply) => {
 // ── POST /api/v1/notes ────────────────────────────────────────────────────────
 export const createNote = async (req: FastifyRequest, reply: FastifyReply) => {
   const user = req.user as User;
-  const { title, content, source = "manual", source_meta = {}, tags = [] } =
-    req.body as any;
+  const {
+    title,
+    content,
+    source = "manual",
+    source_meta = {},
+    tags = [],
+  } = req.body as any;
 
   if (!content?.trim() && !title?.trim()) {
     return errors.validation(reply, "title or content is required");
@@ -109,42 +114,62 @@ export const deleteNote = async (req: FastifyRequest, reply: FastifyReply) => {
 };
 
 // ── GET /api/v1/notes/for-studio ─────────────────────────────────────────────
-export const getNotesForStudio = async (req: FastifyRequest, reply: FastifyReply) => {
+export const getNotesForStudio = async (
+  req: FastifyRequest,
+  reply: FastifyReply,
+) => {
   const user = req.user as User;
   try {
     const notes = await (prisma as any).creator_notes.findMany({
       where: { user_id: user.id },
-      orderBy: [{ is_pinned: 'desc' }, { updated_at: 'desc' }],
+      orderBy: [{ is_pinned: "desc" }, { updated_at: "desc" }],
       take: 50,
-      select: { id: true, title: true, content: true, tags: true, is_pinned: true, source: true, updated_at: true },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        tags: true,
+        is_pinned: true,
+        source: true,
+        updated_at: true,
+      },
     });
     return success(reply, { notes });
   } catch (err) {
-    logger.error({ err }, 'getNotesForStudio failed');
+    logger.error({ err }, "getNotesForStudio failed");
     return errors.internal(reply);
   }
 };
 
 // ── POST /api/v1/notes/attach-to-studio ──────────────────────────────────────
-export const attachNotesToStudio = async (req: FastifyRequest<{ Body: any }>, reply: FastifyReply) => {
+export const attachNotesToStudio = async (
+  req: FastifyRequest<{
+    Body: { noteIds: string[]; studioSessionId?: string; ideaTitle?: string };
+  }>,
+  reply: FastifyReply,
+) => {
   const user = req.user as User;
   const { noteIds, studioSessionId, ideaTitle } = req.body;
   if (!Array.isArray(noteIds) || noteIds.length === 0) {
-    return errors.validation(reply, 'noteIds required');
+    return errors.validation(reply, "noteIds required");
   }
 
   try {
     await (prisma as any).creator_notes.updateMany({
       where: { id: { in: noteIds }, user_id: user.id },
       data: {
-        source: 'studio_idea',
-        source_meta: { studioSessionId, ideaTitle, attachedAt: new Date().toISOString() } as any,
+        source: "studio_idea",
+        source_meta: {
+          studioSessionId,
+          ideaTitle,
+          attachedAt: new Date().toISOString(),
+        } as any,
         updated_at: new Date(),
       },
     });
     return success(reply, { attached: noteIds.length });
   } catch (err) {
-    logger.error({ err }, 'attachNotesToStudio failed');
+    logger.error({ err }, "attachNotesToStudio failed");
     return errors.internal(reply);
   }
 };

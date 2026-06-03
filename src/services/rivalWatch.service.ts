@@ -11,7 +11,12 @@ import { prisma } from "../config/database";
 import { cache } from "../config/redis";
 import { sendPushNotification } from "../config/firebase";
 import { logger } from "../utils/logger";
-import { harvestTopContent, scorePosts, RivalHandle, RivalPost } from "./rival.service";
+import {
+  harvestTopContent,
+  scorePosts,
+  RivalHandle,
+  RivalPost,
+} from "./rival.service";
 import pLimit from "p-limit";
 
 const RIVAL_CHECK_CACHE_TTL = 4 * 60 * 60; // 4 hours per handle
@@ -37,10 +42,7 @@ export async function checkRivalForNewContent(
     const cacheKey = `rival_check:${handle.toLowerCase()}`;
     const cached = await cache.get(cacheKey);
     if (cached) {
-      logger.debug(
-        { handle, userId },
-        "Rival check hit cache",
-      );
+      logger.debug({ handle, userId }, "Rival check hit cache");
       return cached as RivalCheckResult | null;
     }
 
@@ -135,10 +137,7 @@ export async function checkRivalWatchActivity(
 
     return results;
   } catch (err) {
-    logger.error(
-      { err, userId },
-      "Error checking rival watch activity",
-    );
+    logger.error({ err, userId }, "Error checking rival watch activity");
     return [];
   }
 }
@@ -158,7 +157,7 @@ export async function runRivalWatchCheck(): Promise<{
     // Query: users with rival handles and FCM token
     const usersWithRivals = await prisma.users.findMany({
       where: {
-        rival_watch_handles: { not: { equals: [] } },
+        rival_watch_handles: { isEmpty: false },
         fcm_token: { not: null },
       },
       select: {
@@ -182,9 +181,10 @@ export async function runRivalWatchCheck(): Promise<{
       limiter(async () => {
         try {
           // Throttle: max 2 handles per user per run
-          const handlesToPoll = (
-            user.rival_watch_handles as string[]
-          ).slice(0, MAX_HANDLES_PER_USER);
+          const handlesToPoll = (user.rival_watch_handles as string[]).slice(
+            0,
+            MAX_HANDLES_PER_USER,
+          );
 
           for (const handle of handlesToPoll) {
             result.checked++;
@@ -220,7 +220,7 @@ export async function runRivalWatchCheck(): Promise<{
               };
 
               await sendPushNotification({
-                token: user.fcm_token,
+                token: user.fcm_token!,
                 title,
                 body,
                 data,

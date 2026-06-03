@@ -31,9 +31,7 @@ export interface PerformanceSignal {
 }
 
 // ── Helper: Extract hook style from generated_script ────────────────────────────
-function extractHookStyle(
-  generatedScript: any,
-): string {
+function extractHookStyle(generatedScript: any): string {
   if (!generatedScript || typeof generatedScript !== "object") return "unknown";
 
   // Try to find hook section in sections array
@@ -98,16 +96,15 @@ interface PostMatch {
   er?: number;
 }
 
-function fuzzyMatchPost(
-  entry: any,
-  post: any,
-): PostMatch {
+function fuzzyMatchPost(entry: any, post: any): PostMatch {
   // Match criteria:
   // 1. Caption similarity (first 50 chars)
   // 2. Posting date proximity (within 2 hours of scheduled_date)
 
   const entryCaption = entry.caption ? entry.caption.substring(0, 50) : "";
-  const postCaption = post.caption ? (post.caption as string).substring(0, 50) : "";
+  const postCaption = post.caption
+    ? (post.caption as string).substring(0, 50)
+    : "";
 
   // Simple caption match
   const captionMatch =
@@ -330,7 +327,7 @@ export async function runPerformanceFeedback(userId: string): Promise<{
         // Get creator analytics for this platform and time period
         const analytics = await prisma.creator_analytics.findUnique({
           where: {
-            creator_analytics_user_platform_key: {
+            user_id_platform: {
               user_id: userId,
               platform: entry.platform,
             },
@@ -377,9 +374,7 @@ export async function runPerformanceFeedback(userId: string): Promise<{
           where: { niche: entry.niche || script.niche },
         });
 
-        const benchmarkER = benchmark
-          ? Number(benchmark.avg_er) || 3.0
-          : 3.0;
+        const benchmarkER = benchmark ? Number(benchmark.avg_er) || 3.0 : 3.0;
         const actualER = matchedPost.er || 0;
         const erVsNicheAvg = actualER / benchmarkER;
 
@@ -460,10 +455,7 @@ export async function runPerformanceFeedback(userId: string): Promise<{
     // Invalidate memory cache so next read gets fresh data
     await cache.del(`aria_memory:${userId}`).catch(() => {});
 
-    logger.info(
-      { userId, ...result },
-      "Performance feedback run complete",
-    );
+    logger.info({ userId, ...result }, "Performance feedback run complete");
 
     return result;
   } catch (err: any) {
@@ -501,10 +493,7 @@ export async function runPerformanceFeedbackAll(): Promise<void> {
 
       if (users.length === 0) break;
 
-      logger.info(
-        { offset, batchSize: users.length },
-        "Processing user batch",
-      );
+      logger.info({ offset, batchSize: users.length }, "Processing user batch");
 
       // Process each user in the batch
       for (const user of users) {

@@ -6,8 +6,17 @@ import { success, errors } from "../utils/response";
 import { logger } from "../utils/logger";
 import { User } from "../types";
 import { debitCredits } from "../services/credits.service";
-import { getVoicePortrait, buildVoicePortrait } from "../services/voice.service";
-import { rankTrendsByVoiceFit, VoiceFitScore, scoreVoiceFit } from "../services/voiceFit.service";
+import {
+  getVoicePortrait,
+  buildVoicePortrait,
+} from "../services/voice.service";
+import {
+  rankTrendsByVoiceFit,
+  VoiceFitScore,
+  scoreVoiceFit,
+  type TrendWithVoiceFit,
+} from "../services/voiceFit.service";
+import type { ViralIdea } from "../services/viralIdeas.service";
 
 export interface GetTrendsQuery {
   niche?: string;
@@ -438,7 +447,10 @@ export const getViralIdeas = async (
         let cachedIdeas = cached;
         let voiceProfiled = false;
         const portrait = await getVoicePortrait(user.id).catch((err) => {
-          logger.warn({ err }, "Failed to fetch voice portrait for cached viral ideas");
+          logger.warn(
+            { err },
+            "Failed to fetch voice portrait for cached viral ideas",
+          );
           return null;
         });
 
@@ -509,7 +521,6 @@ export const getViralIdeas = async (
       modelToUse,
       1500, // approx input tokens
       800, // approx output tokens
-    
     ).catch((err) =>
       logger.warn({ err }, "Debit failed — non-fatal, ideas already returned"),
     );
@@ -521,16 +532,26 @@ export const getViralIdeas = async (
     });
 
     // ── Apply voice fit scoring to fresh ideas (per-user) ───────────────
-    let finalIdeas = ideas;
+    let finalIdeas: (ViralIdea | TrendWithVoiceFit)[] = ideas;
     let voiceProfiled = false;
     const portrait = await getVoicePortrait(user.id).catch((err) => {
-      logger.warn({ err }, "Failed to fetch voice portrait for fresh viral ideas");
+      logger.warn(
+        { err },
+        "Failed to fetch voice portrait for fresh viral ideas",
+      );
       return null;
     });
 
     if (portrait) {
       voiceProfiled = true;
-      const rankedIdeas = rankTrendsByVoiceFit(ideas, portrait);
+      const ideasWithPlatform = ideas.map((idea: any) => ({
+        ...idea,
+        platform: platform || user.primary_platform || "instagram",
+      }));
+      const rankedIdeas = rankTrendsByVoiceFit(
+        ideasWithPlatform as any,
+        portrait,
+      );
       finalIdeas = rankedIdeas;
     } else {
       // Add neutral voiceFit if no portrait
@@ -603,7 +624,8 @@ export const getVoiceFitPreview = async (
       // No portrait data available
       return success(reply, {
         hasPortrait: false,
-        message: "No voice profile yet. Generate by completing Profile analysis.",
+        message:
+          "No voice profile yet. Generate by completing Profile analysis.",
       });
     }
 

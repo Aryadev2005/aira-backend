@@ -22,9 +22,11 @@ export interface DigestPayload {
   userName: string;
   topTrends: Array<{ title: string; niche: string; voiceFitGrade: string }>;
   topContentIdea: { title: string; format: string; hookLine: string };
-  rivalWatch:
-    | Array<{ handle: string; latestPost: string; dnaGrade: string }>
-    | null;
+  rivalWatch: Array<{
+    handle: string;
+    latestPost: string;
+    dnaGrade: string;
+  }> | null;
   weekNumber: number;
 }
 
@@ -91,10 +93,7 @@ export async function buildUserDigest(
           niche_tags: { hasSome: [userNiche] },
           expires_at: { gt: new Date() }, // Not expired
         },
-        orderBy: [
-          { platform_raw_score: "desc" },
-          { fetched_at: "desc" },
-        ],
+        orderBy: [{ platform_raw_score: "desc" }, { fetched_at: "desc" }],
         take: 5,
         select: {
           id: true,
@@ -133,8 +132,7 @@ export async function buildUserDigest(
       title: "Trending Topic Alert",
       format: "video",
       hookLine:
-        topTrends[0]?.title ||
-        "Check out this week's trending content idea",
+        topTrends[0]?.title || "Check out this week's trending content idea",
     };
 
     try {
@@ -280,7 +278,7 @@ export async function runWeeklyDigest(): Promise<{
           continue;
         }
 
-        await sendDigestNotification(digest, user.fcm_token);
+        await sendDigestNotification(digest, user.fcm_token!);
         result.sent++;
       } catch (err) {
         logger.error({ err, userId: user.id }, "Error processing digest");

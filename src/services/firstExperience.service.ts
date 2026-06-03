@@ -23,6 +23,14 @@ export const TRIAL_ACTIONS = [
 
 export type TrialAction = (typeof TRIAL_ACTIONS)[number];
 
+export type TrialStatus = {
+  rival_spy_trial: { used: boolean; usedAt?: string };
+  studio_trial: { used: boolean; usedAt?: string };
+  video_dna_trial: { used: boolean; usedAt?: string };
+  allUsed: boolean;
+  convertedToPro: boolean;
+};
+
 /**
  * Map trial action key → real credit_config action_key
  * Used for validation and credit deduction
@@ -128,10 +136,10 @@ export async function markTrialUsed(
       create: {
         user_id: userId,
         action_key: action,
-        result_data: resultData || null,
+        result_data: (resultData || {}) as any,
       },
       update: {
-        result_data: resultData || null,
+        result_data: (resultData || {}) as any,
       },
     });
 
@@ -156,17 +164,11 @@ export { markTrialUsed as markTrialAsUsed };
  * Get full trial status for a user (used by frontend)
  * Returns which trials have been used and when
  */
-export async function getTrialStatus(userId: string): Promise<{
-  rival_spy_trial: { used: boolean; usedAt?: string };
-  studio_trial: { used: boolean; usedAt?: string };
-  video_dna_trial: { used: boolean; usedAt?: string };
-  allUsed: boolean;
-  convertedToPro: boolean;
-}> {
+export async function getTrialStatus(userId: string): Promise<TrialStatus> {
   try {
     // Check cache first
     const cached = await cache.get(`trial_status:${userId}`);
-    if (cached) return cached;
+    if (cached) return cached as TrialStatus;
 
     // Fetch from DB
     const usageRows = await prisma.first_experience_usage.findMany({
@@ -178,7 +180,7 @@ export async function getTrialStatus(userId: string): Promise<{
       },
     });
 
-    const status = {
+    const status: TrialStatus = {
       rival_spy_trial: { used: false, usedAt: undefined },
       studio_trial: { used: false, usedAt: undefined },
       video_dna_trial: { used: false, usedAt: undefined },
@@ -188,7 +190,7 @@ export async function getTrialStatus(userId: string): Promise<{
 
     for (const row of usageRows) {
       const key = row.action_key as TrialAction;
-      if (status[key]) {
+      if (TRIAL_ACTIONS.includes(key)) {
         status[key].used = true;
         status[key].usedAt = row.used_at?.toISOString();
       }
@@ -294,7 +296,7 @@ export async function getTrialResult(
       select: { result_data: true },
     });
 
-    return row?.result_data || null;
+    return (row?.result_data as object) || null;
   } catch (err: any) {
     logger.warn(
       { err: err.message, userId, action },
